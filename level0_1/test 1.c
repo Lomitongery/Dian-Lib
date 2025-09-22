@@ -14,6 +14,7 @@ int main() {
     while (bp) {
         //printf("输入：");
         char* str = Read();
+
         if (!strcmp(str, "Quit")) bp = 0;
         else if (!strcmp(str, "Dian")) printf("%d\n", set_year);
         else printf("Error\n");
