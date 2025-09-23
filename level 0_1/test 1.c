@@ -1,5 +1,5 @@
 //
-// Created by Lenovo on 2025/9/21.
+// Created by Lenovo on 2025/9/23.
 //
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,9 +14,8 @@ int main() {
     while (bp) {
         //printf("输入：");
         char* str = Read();
-
-        if (!strcmp(str, "Quit")) bp = 0;
-        else if (!strcmp(str, "Dian")) printf("%d\n", set_year);
+        if (!_stricmp(str, "Quit")) bp = 0;
+        else if (!_stricmp(str, "Dian")) printf("%d\n", set_year);
         else printf("Error\n");
         free(str);
     }
