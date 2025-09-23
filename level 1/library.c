@@ -30,7 +30,7 @@ bool load_library(const char* filename, Library Dian[]); // 读取文件数据
 // 图书馆功能
 void Login(char** user); // 登录
 void Exit(char** user); // 登出
-void Reservation(char** user, Library Dian[]); // 查询用户所有预约
+void Reservation(char** user, Library lib[]); // 查询用户所有预约
 void Clear(char** user, Library Dian[]); // Admin清空所有预约
 void Query(char** str, char** user, Library Dian[]); // 查询某天某层预约
 void Reserve(char** str, char* user, Library Dian[]); // 预定座位
@@ -234,7 +234,7 @@ void Exit(char** user) {
 	*user = NULL;
 }
 
-void Reservation(char** user, Library Dian[]) {
+void Reservation(char** user, Library lib[]) {
 	if (*user == NULL) {
 		printf("Please log in. (Currently logged out)\n");
 		return;
@@ -248,7 +248,7 @@ void Reservation(char** user, Library Dian[]) {
 		for (int l = 0; l < 5; l++) {
 			for (int j = 0; j < 4; j++) {
 				for (int k = 0; k < 4; k++) {
-					if (Dian[i].seat[l][j][k] == **user) {
+					if (lib[i].seat[l][j][k] == **user) {
 						printf("%s Floor %d Seat %d %d\n", Turn_day(i), l+1, j+1, k+1);
 						bp = 1;
 					}
@@ -423,7 +423,7 @@ int judge_name(char* str) {
 bool save_library(const char* filename, Library Dian[]) {
 	FILE* fp = fopen(filename, "w");
 	if (fp == NULL) {
-		printf("文件打开失败\n");
+		printf("Failed to open file.\n");
 		return false;
 	}
 	for (int i = 0; i < 7; i++) {
