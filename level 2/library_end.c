@@ -32,6 +32,9 @@ void Help();
 
 // 判断转换
 int judge(char** str, Library lib[]); // 检测指令类型
+int judge_f(char** str); // 判断文件层数描述
+int judge_r(char** str); // 判断文件行数描述
+int judge_c(char** str); // 判断文件列数描述
 int judge_day(char* str); // 将星期转换为数字
 char* Turn_day(int i); // 将数字转换为星期
 int judge_fnum(char* str, int num); // 类型转换 字符串转为数字 针对层
@@ -86,6 +89,20 @@ int main() {
 
     char* help = "Help";
     printf("If you need help, you can entre %s.\n", help);
+    for (int d = 0; d < DAYS; d++) {
+        //printf("Day %d\n", i + 1);
+        for (int f = 0; f < Dian[d].floor_cnt ; f++) {
+            //printf("Level %d\n", l + 1);
+            for (int r = 0; r < Dian[d].row_cnt[f] ; r++) {
+                for (int c = 0; c < Dian[d].col_cnt[f][r] ; c++) {
+                    printf("%c ", Dian[d].seat[f][r][c]);
+                }
+                printf("\n");
+            }
+            printf("\n");
+        }
+        printf("===\n");
+    }
 
     char* user = NULL;
     char* input;
@@ -208,10 +225,13 @@ bool init_library(Library* lib, int init_floor, int init_row_per_floor, int init
                     free(lib[d].seat);
                     return false;
                 }
-
-                for (int c = 0; c < lib[d].col_cnt[f][r]; c++) {
-                    memset(lib[d].seat[f][r], '0', lib[d].col_cnt[f][r] * sizeof(char));
-                }
+                memset(lib[d].seat[f][r],'0', lib[d].col_cnt[f][r]);
+                // for (int c = 0; c < lib[d].col_cnt[f][r]; c++) {
+                //     if (lib[d].seat[f][r][c]>='A'&&lib[d].seat[f][r][c]<='Z') {
+                //         continue;
+                //     }
+                //     else lib[d].seat[f][r][c] = '0';
+                // }
             }
         }
     }
@@ -230,16 +250,65 @@ bool load_library(const char* filename, Library lib[]) {
     }
 
     // 初始化
+    // 先检测开头层行列的标注
+    int floor_num = 0 , row_num = 0, col_num = 0;
+    bool bd = true;
+    char* floor = (char*)malloc(1000 * sizeof(char));
+    char* row = (char*)malloc(1000 * sizeof(char));
+    char* col = (char*)malloc(1000 * sizeof(char));
+    floor = fgets(floor, 1000, fp);
+    char** str_f = split(floor);
 
-    // if (!init_library(lib, lib[0].floor_cnt, lib[0].row_cnt, 4)) {
-    //      printf("Failed to initialize library.\n");
-    //      return 1;
-    // }
+    floor_num = judge_f(str_f);
+    printf("Floor: %d\n", floor_num);
+    if (floor_num == 0) {
+        free(floor);
+        free(row);
+        free(col);
+        free(str_f);
+        return false;
+    }
+
+    row = fgets(row, 1000, fp);
+    char** str_r = split(row);
+    row_num = judge_r(str_r);
+    printf("Row: %d\n", row_num);
+    if (row_num == 0) {
+        free(floor);
+        free(row);
+        free(col);
+        free(str_f);
+        free(str_r);
+        return false;
+    }
+
+    col = fgets(col, 1000, fp);
+    char** str_c = split(col);
+    col_num = judge_c(str_c);
+    printf("Column: %d\n", col_num);
+    if (col_num == 0) {
+        free(floor);
+        free(row);
+        free(col);
+        free(str_f);
+        free(str_r);
+        free(str_c);
+        return false;
+    }
 
     // 遍历下载
     for (int d = 0; d < DAYS; d++) {
+        lib[d].floor_cnt = floor_num;
+        lib[d].row_cnt = (int*)malloc(lib[d].floor_cnt * sizeof(int));
+        lib[d].col_cnt = (int**)malloc(lib[d].floor_cnt * sizeof(int*));
+        lib[d].seat = (char***)malloc(lib[d].floor_cnt * sizeof(char**));
         for (int f = 0; f < lib[d].floor_cnt ; f++) {
+            lib[d].row_cnt[f] = row_num;
+            lib[d].col_cnt[f] = (int*)malloc(lib[d].row_cnt[f] * sizeof(int));
+            lib[d].seat[f] = (char**)malloc(lib[d].row_cnt[f] * sizeof(char*));
             for (int r = 0; r < lib[d].row_cnt[f] ; r++) {
+                lib[d].col_cnt[f][r] = col_num;
+                lib[d].seat[f][r]  = (char*)malloc(lib[d].col_cnt[f][r] * sizeof(char));
                 for (int c = 0; c < lib[d].col_cnt[f][r] ; c++) {
                     int ch;
                     while ((ch = fgetc(fp)) == ' ') {
@@ -279,6 +348,12 @@ bool load_library(const char* filename, Library lib[]) {
         }
     }
     fclose(fp);
+    free(floor);
+    free(row);
+    free(col);
+    free(str_f);
+    free(str_r);
+    free(str_c);
     return true;
 }
 bool save_library(const char* filename, Library lib[]) {
@@ -287,6 +362,10 @@ bool save_library(const char* filename, Library lib[]) {
         printf("Failed to open file.\n");
         return false;
     }
+    fprintf(fp,"Floor %d\n", lib[0].floor_cnt);
+    fprintf(fp,"Row %d\n", lib[0].row_cnt[0]);
+    fprintf(fp,"Column %d\n", lib[0].col_cnt[0][0]);
+
     for (int d = 0; d < DAYS; d++) {
         //printf("Day %d\n", i + 1);
         for (int f = 0; f < lib[d].floor_cnt ; f++) {
@@ -375,14 +454,24 @@ char** split(char* input) {
 
 // 帮助函数
 void Help() {
-    printf("The orders of Dian's Library :\n"
+    printf("general command:\n"
             "Quit\n"
             "Login\n"
             "Exit\n"
+            "(day) Floor (floor_num)\n"
+            "\n"
+            "User-available commands:\n"
             "Reservation\n"
             "Reserve (day) Floor (floor_num) Seat (row_num) (column_num)\n"
-            "(day) Floor (floor_num)\n"
-            "Clear (only Admin)\n"
+            "\n"
+            "Admin-available commands:\n"
+            "Clear\n"
+            "Adjust Day (day) Open/Close\n"
+            "Adjust Day (day) Floor (floor_num) Open/Close\n"
+            "Change Floor (floor_num) Row (row_num) Column (column_num) Forever\n"
+            "Reserve\n"
+            "Delete\n"
+            "\n"
             );
     return;
 }
@@ -474,6 +563,39 @@ int judge(char** str, Library lib[]) {
 }
 
 // 判断转换
+int judge_f(char** str) {
+    int len = 0;
+    while (str[len] != NULL) {
+        //printf("%s ", str[len]);
+        len++;
+    }
+    //printf("\n%d\n", len);
+    if (len == 2) {
+        //printf("%d\n", atoi(str[1]));
+        //printf("%d\n", judge_num(str[1]));
+        if (_stricmp(str[0], "Floor") == 0 && judge_num(str[1]) ) return atoi(str[1]);
+        return 0;
+    }
+    return 0;
+}
+int judge_r(char** str){
+    int len = 0;
+    while (str[len] != NULL) len++;
+    if (len == 2) {
+        if (_stricmp(str[0], "Row") == 0 && judge_num(str[1]) ) return atoi(str[1]);
+        return 0;
+    }
+    return 0;
+}
+int judge_c(char** str) {
+    int len = 0;
+    while (str[len] != NULL) len++;
+    if (len == 2) {
+        if (_stricmp(str[0], "Column") == 0 && judge_num(str[1]) ) return atoi(str[1]);
+        return 0;
+    }
+    return 0;
+}
 int judge_day(char* str) {
     if (!_stricmp(str, "Monday")) return 1;
     else if (!_stricmp(str, "Tuesday")) return 2;
@@ -544,7 +666,7 @@ bool judge_admin(char* str){
     return false;
 }
 bool judge_num(char* str) {
-    for (int i = 0; str[i] != '\0'; i++) {
+    for (int i = 0; str[i] != '\0' && str[i]!= '\n' ; i++) {
         if (str[i]<'0'||str[i]>'9') return false;
         if (i == 0 && str[i] == '0') return false;
     }
@@ -620,7 +742,7 @@ void Reservation(char* user, Library lib[]) {
         return;
     }
     if (judge_admin(user)) {
-        printf("Administrators cannot make reservations.\n");
+        printf("Administrators cannot make reservations for themselves.\n");
         return;
     }
     bool bp = false;
@@ -644,7 +766,7 @@ void Reserve(char** str, char* user, Library lib[]) {
         return;
     }
     if (judge_admin(user)) {
-        printf("Administrators cannot make reservations.\n");
+        printf("Administrators cannot make reservations for themselves.\n");
         return;
     }
     int day = judge_day(str[1]);
@@ -732,6 +854,14 @@ void Adjust_floors(char** str, char* user, Library lib[]) {
 
 }
 void Change(char** str, char* user, Library lib[]) {
+    if (!judge_user(user)){
+        printf("Please log in. (Currently logged out)\n");
+        return;
+    }
+    if (!judge_admin(user)) {
+        printf("Access denied. Administrator rights required.\n");
+        return;
+    }
     int floor = atoi(str[2]);
     int row = atoi(str[4]);
     int column = atoi(str[6]);
@@ -739,6 +869,10 @@ void Change(char** str, char* user, Library lib[]) {
     printf("Successfully change.\n");
 }
 void Help_Reserve(char* user, Library lib[]) {
+    if (!judge_user(user)){
+        printf("Please log in. (Currently logged out)\n");
+        return;
+    }
     if (!judge_admin(user)) {
         printf("Access denied. Administrator rights required.\n");
         return;
@@ -806,6 +940,10 @@ void Help_Reserve(char* user, Library lib[]) {
 	}
 }
 void Delete(char* user, Library lib[]) {
+    if (!judge_user(user)){
+        printf("Please log in. (Currently logged out)\n");
+        return;
+    }
     if (!judge_admin(user)) {
         printf("Access denied. Administrator rights required.\n");
         return;
